@@ -235,7 +235,8 @@ def process_track_events(midi_track, tempo_map: List[Tuple[int, int]],
                     'start_time': start_time,
                     'duration': duration,
                     'velocity': velocity,
-                    'start_tick': start_tick
+                    'start_tick': start_tick,
+                    'duration_ticks': duration_ticks
                 })
                 
                 del active_notes[key]
@@ -245,13 +246,15 @@ def process_track_events(midi_track, tempo_map: List[Tuple[int, int]],
         start_time = calculate_absolute_time(start_tick, tempo_map, ticks_per_beat)
         end_time = calculate_absolute_time(current_tick, tempo_map, ticks_per_beat)
         duration = end_time - start_time
+        duration_ticks = current_tick - start_tick
         
         note_events.append({
             'midi_note': note,
             'start_time': start_time,
             'duration': max(duration, 0.1),  # Minimum duration
             'velocity': velocity,
-            'start_tick': start_tick
+            'start_tick': start_tick,
+            'duration_ticks': max(duration_ticks, 1)
         })
     
     # Sort by start time, then by pitch
@@ -275,7 +278,9 @@ def process_track_events(midi_track, tempo_map: List[Tuple[int, int]],
                 midi_note=event['midi_note'],
                 duration=event['duration'],
                 velocity=event['velocity'],
-                start_time=event['start_time']
+                    start_time=event['start_time'],
+                    duration_ticks=event['duration_ticks'],
+                    start_tick=event['start_tick']
             )
             current_group.append(tone)
         else:
@@ -289,7 +294,9 @@ def process_track_events(midi_track, tempo_map: List[Tuple[int, int]],
                 midi_note=event['midi_note'],
                 duration=event['duration'],
                 velocity=event['velocity'],
-                start_time=event['start_time']
+                start_time=event['start_time'],
+                duration_ticks=event['duration_ticks'],
+                start_tick=event['start_tick']
             )]
             current_start_time = event['start_time']
     

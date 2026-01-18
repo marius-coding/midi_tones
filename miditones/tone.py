@@ -6,7 +6,8 @@ from .utils import midi_to_frequency, midi_to_note_name, midi_to_note_int
 class Tone:
     """Represents a single musical note/tone."""
     
-    def __init__(self, midi_note: int, duration: float, velocity: int, start_time: float):
+    def __init__(self, midi_note: int, duration: float, velocity: int, start_time: float,
+                 duration_ticks: int, start_tick: int):
         """
         Initialize a Tone object.
         
@@ -15,11 +16,15 @@ class Tone:
             duration: Duration in seconds
             velocity: MIDI velocity (0-127)
             start_time: Absolute start time in seconds
+            duration_ticks: Duration of the note in MIDI ticks
+            start_tick: Absolute start tick of the note
         """
         self._midi_note = midi_note
         self._duration = duration
         self._velocity = velocity
         self._start_time = start_time
+        self._duration_ticks = duration_ticks
+        self._start_tick = start_tick
         
         # Pre-calculate derived properties
         self._frequency = midi_to_frequency(midi_note)
@@ -55,6 +60,11 @@ class Tone:
     def duration(self) -> float:
         """Duration of the note in seconds."""
         return self._duration
+
+    @property
+    def duration_ticks(self) -> int:
+        """Duration of the note in MIDI ticks."""
+        return self._duration_ticks
     
     @property
     def velocity(self) -> int:
@@ -65,6 +75,11 @@ class Tone:
     def start_time(self) -> float:
         """Absolute start time of the note in seconds from the beginning of the track."""
         return self._start_time
+
+    @property
+    def start_tick(self) -> int:
+        """Absolute start tick of the note from the beginning of the track."""
+        return self._start_tick
     
     def __str__(self) -> str:
         """Returns human-readable representation: 'A4 (440.00 Hz) - 0.5s'"""
@@ -72,4 +87,7 @@ class Tone:
     
     def __repr__(self) -> str:
         """Returns detailed representation: 'Tone(note='A4', frequency=440.0, duration=0.5)'"""
-        return f"Tone(note='{self.note_full}', frequency={self.frequency}, duration={self.duration})"
+        return (
+            f"Tone(note='{self.note_full}', frequency={self.frequency}, duration={self.duration}, "
+            f"duration_ticks={self.duration_ticks})"
+        )

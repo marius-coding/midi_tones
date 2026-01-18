@@ -64,6 +64,11 @@ class Track:
         if self._note_count is None:
             self._calculate_track_info()
         return self._note_count
+
+    @property
+    def ticks_per_beat(self) -> int:
+        """MIDI ticks per beat (resolution) for this track."""
+        return self._ticks_per_beat
     
     def _calculate_track_info(self):
         """Calculate duration and note count by iterating through the track."""
