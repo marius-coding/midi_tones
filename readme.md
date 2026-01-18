@@ -6,11 +6,6 @@ A simple and intuitive Python library for parsing MIDI files and extracting musi
 
 MidiTones loads MIDI files and provides easy access to individual tracks by name. Each track yields lists of tone objects containing frequency (Hz), note representation, and duration (seconds) - perfect for playback, analysis, or music visualization. When multiple notes are played simultaneously, the list contains all those tones. When only a single note is played, the list contains one item.
 
-## Installation
-
-```bash
-pip install miditones
-```
 
 **Dependencies:**
 - `mido` >= 1.2.0 (MIDI file parsing)
