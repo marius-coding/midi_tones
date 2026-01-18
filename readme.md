@@ -8,6 +8,7 @@ MidiTones loads MIDI files and provides easy access to individual tracks by name
 
 tested with:
 https://bitmidi.com/imperialmarch-mid
+python example_organ_player.py --audio --start-time=11 --track Trumpet
 
 **Dependencies:**
 - `mido` >= 1.2.0 (MIDI file parsing)
