@@ -33,13 +33,15 @@ class PipeOrgan:
         sample_rate: int = 44_100,
         volume: float = 0.2,
         use_audio: bool = False,
+        ramp_duration: float = 0.05,
     ) -> None:
         self._start = time.perf_counter()
         self._sample_rate = sample_rate
         self._volume = max(0.0, min(volume, 1.0))
         self._use_audio = bool(use_audio and _SD_OK and np is not None)
+        self._ramp_samples = max(1, int(max(0.0, ramp_duration) * self._sample_rate))
 
-        self._active_freqs: Dict[int, float] = {}
+        self._voices: Dict[int, Dict[str, float]] = {}
         self._lock = threading.Lock()
         self._phase = 0
         self._stream = None
@@ -65,44 +67,67 @@ class PipeOrgan:
 
 
     def _sd_callback(self, outdata, frames, time_info, status):  # type: ignore[override]
-        if not self._active_freqs or np is None:
+        if not self._voices or np is None:
             outdata.fill(0)
             return
 
-        with self._lock:
-            freqs = list(self._active_freqs.values())
-
         t = (np.arange(frames, dtype=np.float32) + self._phase) / float(self._sample_rate)
-        # Mix all active sines; normalize by count to prevent clipping.
         signal = np.zeros(frames, dtype=np.float32)
-        for f in freqs:
-            signal += np.sin(2 * math.pi * f * t).astype(np.float32)
-        if freqs:
-            signal *= (self._volume / max(1, len(freqs)))
+        ramp_step = 1.0 / float(self._ramp_samples)
 
+        with self._lock:
+            voice_count = max(1, len(self._voices))
+            to_remove = []
+
+            for valve, voice in self._voices.items():
+                freq = voice["freq"]
+                gain = voice["gain"]
+                target = voice["target"]
+
+                max_delta = ramp_step * frames
+                delta = max(-max_delta, min(max_delta, target - gain))
+                end_gain = gain + delta
+                gain_ramp = np.linspace(gain, end_gain, frames, endpoint=False, dtype=np.float32)
+
+                signal += np.sin(2 * math.pi * freq * t).astype(np.float32) * gain_ramp
+                voice["gain"] = end_gain
+                if target == 0.0 and end_gain <= 1e-4:
+                    to_remove.append(valve)
+
+            for valve in to_remove:
+                self._voices.pop(valve, None)
+
+        signal *= (self._volume / voice_count)
         outdata[:, 0] = signal
         self._phase = (self._phase + frames) % self._sample_rate
 
     def valve_open(self, valve_index: int):
-        if valve_index in self._active_freqs:
-            return
-
         midi_note = BASE_MIDI_FOR_VALVE_ZERO + valve_index
         freq = midi_to_frequency(midi_note)
 
         if self._use_audio:
             with self._lock:
-                self._active_freqs[valve_index] = freq
+                voice = self._voices.get(valve_index)
+                if voice:
+                    voice["target"] = 1.0
+                else:
+                    self._voices[valve_index] = {"freq": freq, "gain": 0.0, "target": 1.0}
 
     def valve_close(self, valve_index: int):
-
         if self._use_audio:
             with self._lock:
-                self._active_freqs.pop(valve_index, None)
+                voice = self._voices.get(valve_index)
+                if voice:
+                    voice["target"] = 0.0
 
     def close_all(self):
-        for valve in list(self._active_freqs.keys()):
-            self.valve_close(valve)
+        if self._use_audio:
+            with self._lock:
+                for voice in self._voices.values():
+                    voice["target"] = 0.0
+            time.sleep(self._ramp_samples / float(self._sample_rate))
+            with self._lock:
+                self._voices.clear()
         if self._stream is not None:
             try:
                 self._stream.stop()
